@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Школьный генератор коллажей</title>
+<style>
+  :root{
+    --ink:#2b3a55;
+    --accent:#c94f43;
+    --board:#2f6b4f;
+    --wood1:#a97840; --wood2:#8a5a2c;
+    --line:#cfd8e6;
+    --tape:rgba(255,222,130,.8);
+    --hand:"Segoe Script","Comic Sans MS","Chalkboard SE","Comic Neue",cursive;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:"Segoe UI",system-ui,Arial,sans-serif;
+    color:var(--ink);
+    background-color:#eef4fa;
+    background-image:
+      linear-gradient(rgba(125,165,215,.22) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(125,165,215,.22) 1px, transparent 1px);
+    background-size:34px 34px;
+    padding-bottom:50px;
+  }
+  /* ===== Школьная доска (шапка) ===== */
+  .board-wrap{max-width:1080px;margin:26px auto 8px;padding:0 14px}
+  .wood{
+    background:linear-gradient(135deg,var(--wood1),var(--wood2) 55%,var(--wood1));
+    border-radius:18px;padding:14px;
+    box-shadow:0 12px 26px rgba(70,45,15,.28), inset 0 2px 4px rgba(255,255,255,.25);
+  }
+  .chalk-surface{
+    position:relative;overflow:hidden;text-align:center;
+    background:radial-gradient(ellipse at 32% 22%, #3b7d5e, #2c5f46 72%, #255239);
+    border-radius:10px;padding:36px 22px 34px;
+    box-shadow:inset 0 0 40px rgba(0,0,0,.35);
+  }
+  .chalk-surface h1{
+    margin:0;font-family:var(--hand);font-weight:700;
+    font-size:clamp(26px,4.4vw,46px);color:#f7f3e6;
+    text-shadow:0 0 8px rgba(255,255,255,.35);
+  }
+  .chalk-surface p{
+    margin:12px auto 0;max-width:640px;color:#e9e4d2;font-size:15.5px;line-height:1.5;
+  }
+  .doodle{position:absolute;opacity:.5;pointer-events:none}
+  .doodle svg{display:block}
+  .d1{top:14px;left:18px}
+  .d2{bottom:12px;right:22px}
+  .d3{top:16px;right:26px}
+  .d4{bottom:16px;left:30px}
+  .board-tag{
+    display:inline-block;margin-top:14px;padding:6px 14px;border-radius:999px;
+    background:rgba(255,255,255,.12);color:#ffe9b0;font-family:var(--hand);font-size:14px;
+  }
+  /* ===== Бумажные секции ===== */
+  main{max-width:1080px;margin:0 auto;padding:0 14px}
+  section.paper{
+    position:relative;margin:26px 0;padding:26px 30px 28px 58px;
+    background:#fffdf9;border-radius:8px;
+    box-shadow:0 8px 22px rgba(50,60,90,.14);
+  }
+  section.paper::before{ /* красная поля-линия как в тетради */
+    content:"";position:absolute;left:36px;top:0;bottom:0;width:2px;background:#f2a9ad;
+  }
+  section.paper::after{ /* кусочек скотча сверху */
+    content:"";position:absolute;top:-12px;left:50%;transform:translateX(-50%) rotate(-2deg);
+    width:120px;height:26px;background:var(--tape);opacity:.85;border-radius:3px;
+    box-shadow:0 2px 4px rgba(120,90,20,.2);
+  }
+  @media (max-width:640px){
+    section.paper{padding:22px 18px 22px 40px}
+    section.paper::before{left:24px}
+    .doodle{display:none}
+  }
+  h2{
+    font-family:var(--hand);font-size:24px;margin:0 0 18px;color:#1f2d4d;
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  }
+  .num{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:38px;height:38px;border-radius:50%;flex:none;
+    background:var(--accent);color:#fff;font-family:var(--hand);font-size:19px;
+    box-shadow:0 3px 0 rgba(160,50,40,.4);
+  }
+  .hint{color:#5a6a85;font-size:13.5px;margin:8px 0 0;line-height:1.5}
+  .mini{font-family:var(--hand);font-size:13px;color:#3c4c6e}
+  /* ===== Зона загрузки ===== */
+  .dropzone{
+    border:3px dashed #9fb8d8;border-radius:16px;background:#f6faff;
+    padding:34px 20px;text-align:center;cursor:pointer;transition:.15s;
+  }
+  .dropzone:hover,.dropzone.over{background:#eaf3ff;border-color:#5f8cc4;transform:scale(1.005)}
+  .dropzone .plus{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:64px;height:64px;border-radius:50%;background:#ffd95e;color:#5a4300;
+    font-size:34px;font-weight:700;margin-bottom:12px;
+    box-shadow:0 4px 0 rgba(160,120,20,.35);
+  }
+  .dropzone b{font-size:16.5px}
+  .dropzone .sub{color:#5a6a85;font-size:13.5px;margin-top:6px}
+  /* ===== Миниатюры ===== */
+  .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:14px;margin-top:16px}
+  .thumb{background:#fff;border:2px solid #dfe7f2;border-radius:12px;padding:10px;position:relative}
+  .thumb img{width:100%;height:118px;object-fit:cover;border-radius:8px;background:#eef2f8;display:block}
+  .tbar{display:flex;gap:6px;margin-top:8px}
+  .tbar button{
+    flex:1;height:30px;border:2px solid var(--line);background:#fff;border-radius:8px;
+    cursor:pointer;font-size:14px;color:#3c4c6e;line-height:1;
+  }
+  .tbar button:hover{background:#eef4ff;border-color:#9db8d8}
+  .tbar button.del:hover{background:#ffecec;border-color:#e08a8a;color:#b03030}
+  .thumb .cap{
+    width:100%;margin-top:8px;padding:7px 9px;border:2px solid var(--line);
+    border-radius:8px;font-size:13px;font-family:var(--hand);
+  }
+  .thumb .cap:focus{outline:none;border-color:#c9a24a}
+  .row-tools{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center}
+  /* ===== Поля ввода ===== */
+  input[type=text]{
+    width:100%;padding:11px 14px;border:2px solid var(--line);border-radius:10px;
+    font-size:15px;background:#fbfdff;color:var(--ink);
+  }
+  input[type=text]:focus{outline:none;border-color:#c9a24a;background:#fff}
+  input[type=text].hand{font-family:var(--hand);font-size:16px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:13px;color:#5a6a85;margin-bottom:6px;font-weight:600}
+  /* ===== Чипы-переключатели ===== */
+  .group-label{font-family:var(--hand);font-size:15px;color:#3c4c6e;margin:20px 0 10px}
+  .chips{display:flex;flex-wrap:wrap;gap:10px}
+  .chip{
+    display:inline-flex;align-items:center;gap:7px;padding:10px 16px;cursor:pointer;
+    border:2px solid var(--line);border-radius:999px;background:#fff;
+    font-weight:600;font-size:14.5px;user-select:none;transition:.12s;
+  }
+  .chip input{position:absolute;opacity:0;pointer-events:none}
+  .chip.on{border-color:var(--accent);background:#fff3ef;color:#a03528;box-shadow:0 3px 8px rgba(200,80,65,.18)}
+  /* ===== Оформления (фоны) ===== */
+  .swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:12px}
+  .swatch{cursor:pointer;position:relative;text-align:center}
+  .swatch input{position:absolute;opacity:0;pointer-events:none}
+  .swatch .prev{
+    height:64px;border-radius:10px;border:2px solid #d5dde8;
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--hand);font-size:13px;overflow:hidden;
+  }
+  .swatch .name{font-size:12.5px;margin-top:6px;color:#3c4c6e;font-weight:600}
+  .swatch.on .prev{outline:3px solid var(--accent);outline-offset:2px}
+  .swatch.on .name{color:#a03528}
+  .p-notebook{background:#fbfdff;background-image:linear-gradient(#c7dcf0 1px,transparent 1px),linear-gradient(90deg,#c7dcf0 1px,transparent 1px);background-size:14px 14px;color:#24345e}
+  .p-board{background:radial-gradient(ellipse at 30% 25%,#3a7a5c,#2c5f46);color:#f7f3e6;box-shadow:inset 0 0 0 5px #a97840}
+  .p-lined{background:#fff;background-image:repeating-linear-gradient(#fff 0 10px,#bcd6ea 10px 12px);box-shadow:inset 6px 0 0 0 #e8a0a8;color:#23406b}
+  .p-kraft{background:linear-gradient(135deg,#d0af7e,#bd9261);color:#3e2c16}
+  .p-album{background:#fdfcf8;background-image:radial-gradient(rgba(0,0,0,.06) 1px,transparent 1px);background-size:12px 12px;color:#2b2b2b}
+  .p-mm{background:#fbfdff;background-image:linear-gradient(#9db8d4 1.5px,transparent 1.5px),linear-gradient(90deg,#9db8d4 1.5px,transparent 1.5px),linear-gradient(#d7e2ee 1px,transparent 1px),linear-gradient(90deg,#d7e2ee 1px,transparent 1px);background-size:28px 28px,28px 28px,7px 7px,7px 7px;color:#173a5e}
+  /* ===== Слайдеры и тумблеры ===== */
+  .detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px 26px;align-items:center}
+  .range-row{display:flex;align-items:center;gap:12px;margin:8px 0}
+  .range-row>span:first-child{flex:1;font-weight:600;font-size:14px}
+  .range-row output{font-size:13px;color:#5a6a85;width:56px;text-align:right}
+  input[type=range]{width:150px;accent-color:var(--accent)}
+  .toggle{display:inline-flex}
+  /* ===== Кнопки ===== */
+  .btn{
+    font-family:var(--hand);font-size:17px;padding:12px 24px;border-radius:12px;border:none;
+    cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.16);transition:.12s;
+  }
+  .btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.16)}
+  .btn-primary{background:var(--board);color:#fff}
+  .btn-primary:hover{background:#3a7d5e}
+  .btn-primary:disabled{background:#9db8a8;cursor:not-allowed;box-shadow:none;transform:none}
+  .btn-warn{background:#ffd95e;color:#5a4300}
+  .btn-warn:hover{background:#ffdf7d}
+  .btn-ghost{background:#fff;color:#3c4c6e;border:2px solid var(--line);box-shadow:none}
+  .btn-ghost:hover{background:#f0f5fc}
+  .btn-danger{background:#fff;color:#b03030;border:2px solid #e8b4b4;box-shadow:none}
+  .btn-danger:hover{background:#fff0f0}
+  .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
+  /* ===== Предпросмотр ===== */
+  .canvas-wrap{text-align:center;margin-top:6px}
+  #cv{
+    width:100%;max-width:840px;height:auto;display:inline-block;
+    border-radius:8px;box-shadow:0 14px 34px rgba(40,50,80,.25);
+    border:1px solid #e3e9f2;background:#fff;
+  }
+  .live{
+    display:inline-flex;align-items:center;gap:7px;
+    padding:5px 13px;border-radius:999px;
+    background:#e7f4ec;color:#2f6b4f;font-size:12px;font-weight:700;
+    font-family:"Segoe UI",system-ui,Arial,sans-serif;letter-spacing:.2px;
+  }
+  .live::before{
+    content:"";width:8px;height:8px;border-radius:50%;background:#3aa76d;
+    box-shadow:0 0 0 0 rgba(58,167,109,.45);animation:livePulse 1.6s infinite;
+  }
+  @keyframes livePulse{
+    0%{box-shadow:0 0 0 0 rgba(58,167,109,.45)}
+    70%{box-shadow:0 0 0 7px rgba(58,167,109,0)}
+    100%{box-shadow:0 0 0 0 rgba(58,167,109,0)}
+  }
+  /* ===== Широкий экран: настройки и живой предпросмотр рядом ===== */
+  @media (min-width:1150px){
+    .board-wrap{max-width:1480px}
+    main{
+      max-width:1480px;
+      display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);
+      column-gap:30px;align-items:stretch;
+    }
+    .col-left,.col-right{min-width:0}
+    .col-right>.paper{position:sticky;top:16px}
+    #cv{width:auto;height:auto;max-width:100%;max-height:calc(100vh - 250px)}
+  }
+  /* ===== Узкий экран: плавающая кнопка к предпросмотру ===== */
+  .fab{
+    position:fixed;right:16px;bottom:16px;z-index:40;display:none;
+    width:56px;height:56px;border-radius:50%;
+    background:var(--board);color:#fff;align-items:center;justify-content:center;
+    font-size:24px;text-decoration:none;
+    box-shadow:0 6px 16px rgba(30,50,80,.35);
+  }
+  .fab:active{transform:scale(.94)}
+  @media (max-width:1149.5px){.fab{display:flex}}
+  /* ===== Как пользоваться ===== */
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+  .step{background:#f7faff;border:2px solid #e2eaf5;border-radius:12px;padding:14px 16px}
+  .step b{font-family:var(--hand)}
+  /* ===== Тост и оверлей ===== */
+  #toast{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+    background:#22304d;color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;
+    opacity:0;pointer-events:none;transition:.25s;z-index:60;max-width:88vw;text-align:center;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  #overlay{
+    position:fixed;inset:0;background:rgba(18,24,40,.85);z-index:50;
+    display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:20px;
+  }
+  #overlay.open{display:flex}
+  #overlayImg{max-width:92vw;max-height:80vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5);background:#fff}
+  #overlay .note{color:#e7ebf5;font-size:14px;text-align:center;max-width:560px}
+  footer{
+    text-align:center;color:#5a6a85;font-size:13.5px;margin-top:34px;padding:0 16px;line-height:1.6;
+  }
+  footer .heart{color:#c94f43}
+  kbd{background:#fff;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12px}
+</style>
+</head>
+<body>
+
+<!-- ШАПКА-ДОСКА -->
+<div class="board-wrap">
+  <div class="wood">
+    <div class="chalk-surface">
+      <div class="doodle d1"><svg width="52" height="52" viewBox="0 0 100 100"><path d="M50 8 L61 38 L92 38 L67 57 L76 88 L50 69 L24 88 L33 57 L8 38 L39 38 Z" fill="none" stroke="#ffe3a1" stroke-width="5" stroke-linejoin="round"/></svg></div>
+      <div class="doodle d2"><svg width="64" height="46" viewBox="0 0 120 80"><ellipse cx="60" cy="40" rx="52" ry="18" fill="none" stroke="#cfe8ff" stroke-width="4" transform="rotate(-24 60 40)"/><ellipse cx="60" cy="40" rx="52" ry="18" fill="none" stroke="#f9c5d0" stroke-width="4" transform="rotate(40 60 40)"/><circle cx="60" cy="40" r="6" fill="#f6f2e6"/></svg></div>
+      <div class="doodle d3"><svg width="78" height="44" viewBox="0 0 140 60"><text x="0" y="44" font-family="'Segoe Script','Comic Sans MS',cursive" font-size="40" fill="none" stroke="#f6f2e6" stroke-width="2">АБВ</text></svg></div>
+      <div class="doodle d4"><svg width="58" height="44" viewBox="0 0 110 80"><rect x="6" y="26" width="86" height="30" rx="4" fill="none" stroke="#ffe3a1" stroke-width="4" transform="rotate(-12 50 42)"/><path d="M92 56 L104 62 L96 68 Z" fill="none" stroke="#ffe3a1" stroke-width="4" transform="rotate(-12 50 42)"/><path d="M20 30 v22 M34 30 v14 M48 30 v22 M62 30 v14 M76 30 v22" stroke="#ffe3a1" stroke-width="3" fill="none" transform="rotate(-12 50 42)"/></svg></div>
+      <h1>Школьный генератор коллажей</h1>
+      <p>Соберите фотографии, подписи и оформление — и скачайте готовый коллаж для стенгазеты, классного уголка, портфолио или проекта.</p>
+      <span class="board-tag">✏️ Работает без интернета · фото не покидают ваш браузер</span>
+    </div>
+  </div>
+</div>
+
+<main>
+<div class="col-left">
+  <!-- 1. ФОТО -->
+  <section class="paper">
+    <h2><span class="num">1</span> Добавьте фотографии</h2>
+    <div class="dropzone" id="dropzone" role="button" tabindex="0">
+      <div class="plus">＋</div>
+      <div><b>Выбрать изображения</b> · перетащите сюда или вставьте <kbd>Ctrl</kbd>+<kbd>V</kbd></div>
+      <div class="sub">От 1 до 9 изображений JPG, PNG, WEBP или GIF. Можно выбрать несколько файлов сразу.</div>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" multiple hidden>
+    <div class="thumbs" id="thumbs"></div>
+    <div class="row-tools">
+      <button class="btn btn-warn" id="shuffleBtn" style="font-size:14px;padding:9px 16px">🎲 Перемешать</button>
+      <span class="hint" id="counter">0 из 9 фото</span>
+    </div>
+    <p class="hint">В карточках можно ввести подпись к фотографии, повернуть её ↻, изменить порядок ← → или удалить ✕.</p>
+  </section>
+
+  <!-- 2. ЗАГОЛОВОК -->
+  <section class="paper">
+    <h2><span class="num">2</span> Добавьте заголовок</h2>
+    <div class="field">
+      <label for="inpTitle">Общий заголовок (необязательно)</label>
+      <input type="text" id="inpTitle" class="hand" maxlength="80" placeholder="Например: Наш класс · 2026/27">
+    </div>
+    <div class="field">
+      <label for="inpSubtitle">Подзаголовок — класс, дата, событие (необязательно)</label>
+      <input type="text" id="inpSubtitle" class="hand" maxlength="100" placeholder="Например: 5 «Б» класс · осенний парк">
+    </div>
+    <div class="field" style="margin-bottom:0">
+      <label for="inpFooter">Маленькая надпись внизу коллажа (необязательно)</label>
+      <input type="text" id="inpFooter" class="hand" maxlength="90" placeholder="Например: Сделано в школьном клубе «Свежая стенгазета»">
+    </div>
+  </section>
+
+  <!-- 3. НАСТРОЙКИ -->
+  <section class="paper">
+    <h2><span class="num">3</span> Настройте коллаж</h2>
+
+    <div class="group-label">Расположение фотографий</div>
+    <div class="chips" id="layoutChips">
+      <label class="chip"><input type="radio" name="layout" value="grid">▪️ Ровная сетка</label>
+      <label class="chip"><input type="radio" name="layout" value="polaroid">🖼️ Карточки с подписями</label>
+      <label class="chip"><input type="radio" name="layout" value="mosaic">🧩 Одна крупно</label>
+      <label class="chip"><input type="radio" name="layout" value="circles">⭕ Кружки-значки</label>
+    </div>
+    <p class="hint">«Одна крупно» — первое фото занимает половину коллажа. «Кружки» — фото в круглых рамках, как значки на школьной доске.</p>
+
+    <div class="group-label">Формат</div>
+    <div class="chips" id="formatChips">
+      <label class="chip"><input type="radio" name="format" value="square">Квадрат · 1600 × 1600</label>
+      <label class="chip"><input type="radio" name="format" value="portrait">Вертикальный · 1600 × 2000</label>
+      <label class="chip"><input type="radio" name="format" value="landscape">Горизонтальный · 2000 × 1400</label>
+    </div>
+
+    <div class="group-label">Оформление — фон коллажа</div>
+    <div class="swatches" id="themeSwatches">
+      <label class="swatch"><input type="radio" name="theme" value="notebook"><span class="prev p-notebook">клетка</span><span class="name">🎒 Тетрадь в клетку</span></label>
+      <label class="swatch"><input type="radio" name="theme" value="board"><span class="prev p-board">АБВ</span><span class="name">🧑‍🏫 Школьная доска</span></label>
+      <label class="swatch"><input type="radio" name="theme" value="lined"><span class="prev p-lined">линейка</span><span class="name">📓 Тетрадь в линейку</span></label>
+      <label class="swatch"><input type="radio" name="theme" value="kraft"><span class="prev p-kraft">крафт</span><span class="name">📦 Крафт-картон</span></label>
+      <label class="swatch"><input type="radio" name="theme" value="album"><span class="prev p-album">альбом</span><span class="name">☀️ Альбомный лист</span></label>
+      <label class="swatch"><input type="radio" name="theme" value="mm"><span class="prev p-mm">чертёж</span><span class="name">📐 Миллиметровка</span></label>
+    </div>
+
+    <div class="group-label">Как показывать фотографии</div>
+    <div class="chips" id="fitChips">
+      <label class="chip"><input type="radio" name="fit" value="cover">Заполнить кадр</label>
+      <label class="chip"><input type="radio" name="fit" value="contain">Целиком</label>
+    </div>
+    <p class="hint">«Целиком» — вся фотография видна, возможны поля. «Заполнить кадр» — без искажения пропорций, края могут обрезаться.</p>
+
+    <div class="group-label">Детали и качество</div>
+    <div class="detail-grid">
+      <div class="range-row"><span>Отступ между фото</span><input type="range" id="gapRange" min="14" max="52" step="2"><output id="gapOut"></output></div>
+      <div class="range-row"><span>Скругление углов</span><input type="range" id="radiusRange" min="0" max="44" step="2"><output id="radiusOut"></output></div>
+    </div>
+    <div class="chips" id="frameChips" style="margin-top:6px">
+      <label class="chip"><input type="radio" name="frame" value="none">Без рамки</label>
+      <label class="chip"><input type="radio" name="frame" value="white">🖼️ Белая рамка</label>
+      <label class="chip"><input type="radio" name="frame" value="tape">📎 Рамка со скотчем</label>
+    </div>
+    <div class="chips" style="margin-top:12px" id="toggles">
+      <label class="chip toggle"><input type="checkbox" id="tglShadow">Тень под фото</label>
+      <label class="chip toggle"><input type="checkbox" id="tglCaptions">Показывать подписи</label>
+      <label class="chip toggle"><input type="checkbox" id="tglTilt">Наклон карточек (полароид)</label>
+      <label class="chip toggle"><input type="checkbox" id="tglStickers">Школьные наклейки</label>
+      <label class="chip toggle"><input type="checkbox" id="tglEnhance">Слегка улучшать фото</label>
+    </div>
+    <p class="hint">«Наклон» работает в раскладке «Карточки с подписями», «наклейки» — рисует карандаши, звёздочки и яблоки по полям коллажа. «Улучшать» добавляет чуть-чуть контраста и сочности цветам.</p>
+
+    <div class="group-label">Скачивание</div>
+    <div class="chips" id="exportChips">
+      <label class="chip"><input type="radio" name="exportScale" value="1">1600 px — стандарт</label>
+      <label class="chip"><input type="radio" name="exportScale" value="1.5">2400 px — высокое</label>
+      <label class="chip"><input type="radio" name="exportScale" value="2">3200 px — максимум</label>
+      <label class="chip"><input type="radio" name="exportFormat" value="png">PNG</label>
+      <label class="chip"><input type="radio" name="exportFormat" value="jpg">JPG (файл меньше)</label>
+    </div>
+    <p class="hint">Для печати на А4 выбирайте «3200 px — максимум».</p>
+  </section>
+
+  <!-- КАК ПОЛЬЗОВАТЬСЯ -->
+  <section class="paper">
+    <h2>📌 Как пользоваться</h2>
+    <div class="steps">
+      <div class="step"><b>1.</b> Загрузите от 1 до 9 изображений: кнопкой, перетаскиванием или <kbd>Ctrl</kbd>+<kbd>V</kbd>.</div>
+      <div class="step"><b>2.</b> Измените порядок, поверните фото, добавьте заголовок и подписи, выберите оформление.</div>
+      <div class="step"><b>3.</b> Нажмите «Скачать коллаж». Для печати выбирайте PNG и разрешение 3200 px.</div>
+    </div>
+  </section>
+
+</div>
+<div class="col-right">
+  <!-- РЕЗУЛЬТАТ (живой предпросмотр) -->
+  <section class="paper" id="secResult">
+    <h2><span class="num">4</span> Ваш коллаж <span class="live">обновляется мгновенно</span></h2>
+    <div class="canvas-wrap"><canvas id="cv"></canvas></div>
+    <p class="hint" style="text-align:center">Предпросмотр перерисовывается сразу при каждом изменении. Скачивается файл в полном разрешении.</p>
+    <div class="actions" style="justify-content:center">
+      <button class="btn btn-primary" id="btnDownload">⬇️ Скачать коллаж</button>
+      <button class="btn btn-ghost" id="btnFullsize">🔍 В полном размере</button>
+      <button class="btn btn-danger" id="btnClear">🗑️ Очистить всё</button>
+    </div>
+  </section>
+</div>
+</main>
+
+<footer>
+  Сделано с <span class="heart">❤</span> для школьных проектов · все фотографии обрабатываются только в вашем браузере<br>
+  и никуда не отправляются. Сохранённая страница работает даже без интернета.
+</footer>
+
+<div id="toast"></div>
+<a class="fab" id="fabPreview" href="#secResult" title="Показать коллаж">🖼️</a>
+<div id="overlay">
+  <img id="overlayImg" alt="Коллаж в полном размере">
+  <div class="note">Коллаж в полном разрешении. Нажмите правой кнопкой мыши (на телефоне — удерживайте палец) и выберите «Сохранить картинку», либо закройте это окно.</div>
+  <button class="btn btn-ghost" id="overlayClose">Закрыть</button>
+</div>
+
+<script>
+"use strict";
+/* ================== ДАННЫЕ ================== */
+const FORMATS = {
+  square:   { w:1600, h:1600 },
+  portrait: { w:1600, h:2000 },
+  landscape:{ w:2000, h:1400 }
+};
+const HAND = '"Segoe Script","Comic Sans MS","Chalkboard SE","Comic Neue",cursive';
+const fh = s => s + 'px ' + HAND;
+
+const THEMES = {
+  notebook: { base:'#f9fbfe', title:'#24345e', cap:'#33436e', accent:'#3a6ea5', framePad:0 },
+  board:    { base:'#2e6a4d', title:'#f7f3e6', cap:'#ffe9b0', accent:'#ffd97a', chalk:true, framePad:36 },
+  lined:    { base:'#fdfdfb', title:'#23406b', cap:'#2a4a7a', accent:'#c94f43', framePad:0 },
+  kraft:    { base:'#c9a876', title:'#3e2c16', cap:'#5a3f22', accent:'#8a5a26', framePad:0 },
+  album:    { base:'#fdfcf7', title:'#2b2b2b', cap:'#4a4a4a', accent:'#c94f43', framePad:0 },
+  mm:       { base:'#fafcff', title:'#173a5e', cap:'#1c4a74', accent:'#1c5d8f', framePad:0 }
+};
+
+const state = {
+  title:'', subtitle:'', footer:'',
+  layout:'polaroid', format:'square', theme:'notebook',
+  fit:'cover', gap:28, radius:14, frame:'none',
+  shadow:true, captions:true, tilt:true, stickers:true, enhance:false,
+  exportScale:1, exportFormat:'png'
+};
+try{ Object.assign(state, JSON.parse(localStorage.getItem('shkola-collage-v1')||'{}')); }catch(e){}
+
+const photos = [];
+let uid = 0;
+
+/* ================== УТИЛИТЫ ================== */
+const byId = id => document.getElementById(id);
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function hashStr(s){let h=9;for(const c of s){h=Math.imul(h^c.charCodeAt(0),387420489)}return (h^h>>>9)>>>0}
+function rr(ctx,x,y,w,h,r){
+  r=Math.min(r,w/2,h/2); if(r<0)r=0;
+  ctx.beginPath();
+  if(ctx.roundRect){ctx.roundRect(x,y,w,h,r);return;}
+  ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();
+}
+function ellipsize(ctx,t,max){
+  if(ctx.measureText(t).width<=max)return t;
+  let e=t;
+  while(e.length>1 && ctx.measureText(e+'…').width>max)e=e.slice(0,-1);
+  return e+'…';
+}
+function toast(msg){
+  const t=byId('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove('show'),3800);
+}
+function save(){
+  try{localStorage.setItem('shkola-collage-v1',JSON.stringify(state));}catch(e){}
+}
+
+/* ================== ФОНЫ (6 тем) ================== */
+function bgNotebook(ctx,W,H,u){
+  ctx.fillStyle='#f9fbfe';ctx.fillRect(0,0,W,H);
+  ctx.save();ctx.strokeStyle='rgba(105,150,205,.34)';ctx.lineWidth=1.6*u;ctx.beginPath();
+  for(let x=0;x<=W;x+=40*u){ctx.moveTo(x,0);ctx.lineTo(x,H);}
+  for(let y=0;y<=H;y+=40*u){ctx.moveTo(0,y);ctx.lineTo(W,y);}
+  ctx.stroke();ctx.restore();
+}
+function bgBoard(ctx,W,H,u){
+  const wg=ctx.createLinearGradient(0,0,W,H);
+  wg.addColorStop(0,'#a97840');wg.addColorStop(.5,'#8a5a2c');wg.addColorStop(1,'#a06a34');
+  ctx.fillStyle=wg;ctx.fillRect(0,0,W,H);
+  const rng=mulberry32(1234);
+  ctx.save();ctx.globalAlpha=.13;ctx.strokeStyle='#5a3a16';ctx.lineWidth=2.5*u;
+  for(let i=0;i<36;i++){const yy=rng()*H;ctx.beginPath();ctx.moveTo(0,yy);
+    ctx.bezierCurveTo(W*.3,yy+rng()*16*u,W*.6,yy-rng()*16*u,W,yy);ctx.stroke();}
+  ctx.restore();
+  const B=36*u;
+  ctx.fillStyle='#2e6a4d';ctx.fillRect(B,B,W-2*B,H-2*B);
+  const rg=ctx.createRadialGradient(W/2,H/2,10,W/2,H/2,Math.max(W,H)*.72);
+  rg.addColorStop(0,'rgba(255,255,255,.10)');rg.addColorStop(1,'rgba(0,0,0,.30)');
+  ctx.fillStyle=rg;ctx.fillRect(B,B,W-2*B,H-2*B);
+  const r2=mulberry32(77);ctx.save();ctx.lineCap='round';
+  for(let i=0;i<70;i++){
+    ctx.globalAlpha=.03+r2()*.05;ctx.strokeStyle='#ffffff';ctx.lineWidth=(6+r2()*22)*u;
+    const x=B+r2()*(W-2*B),y=B+r2()*(H-2*B),len=(40+r2()*160)*u,a=r2()*Math.PI;
+    ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+Math.cos(a)*len,y+Math.sin(a)*len*.3);ctx.stroke();
+  }
+  ctx.restore();
+  ctx.strokeStyle='rgba(0,0,0,.4)';ctx.lineWidth=3*u;
+  ctx.strokeRect(B,B,W-2*B,H-2*B);
+}
+function bgLined(ctx,W,H,u){
+  ctx.fillStyle='#fdfdfb';ctx.fillRect(0,0,W,H);
+  ctx.save();ctx.strokeStyle='rgba(115,160,210,.4)';ctx.lineWidth=1.6*u;ctx.beginPath();
+  for(let y=46*u;y<=H;y+=46*u){ctx.moveTo(0,y);ctx.lineTo(W,y);}
+  ctx.stroke();
+  ctx.strokeStyle='rgba(225,110,115,.6)';ctx.lineWidth=2.5*u;
+  ctx.beginPath();ctx.moveTo(132*u,0);ctx.lineTo(132*u,H);ctx.stroke();
+  ctx.restore();
+}
+function bgKraft(ctx,W,H,u){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#d0af7e');g.addColorStop(1,'#bf9a63');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  const rng=mulberry32(55);ctx.save();
+  for(let i=0;i<320;i++){
+    ctx.globalAlpha=.05;ctx.strokeStyle=i%2?'#6b4a26':'#ecd6a7';ctx.lineWidth=1.6*u;
+    const x=rng()*W,y=rng()*H,len=(8+rng()*26)*u,a=rng()*Math.PI*2;
+    ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+Math.cos(a)*len,y+Math.sin(a)*len);ctx.stroke();
+  }
+  ctx.restore();
+  ctx.save();ctx.setLineDash([16*u,12*u]);ctx.strokeStyle='rgba(90,60,28,.55)';ctx.lineWidth=2.5*u;
+  ctx.strokeRect(26*u,26*u,W-52*u,H-52*u);ctx.restore();
+}
+function bgAlbum(ctx,W,H,u){
+  ctx.fillStyle='#fdfcf7';ctx.fillRect(0,0,W,H);
+  const rng=mulberry32(9);ctx.save();ctx.fillStyle='#7a7466';
+  for(let i=0;i<420;i++){ctx.globalAlpha=.035;ctx.fillRect(rng()*W,rng()*H,2*u,2*u);}
+  ctx.restore();
+  ctx.save();ctx.strokeStyle='rgba(150,140,120,.5)';ctx.lineWidth=2.5*u;
+  ctx.strokeRect(26*u,26*u,W-52*u,H-52*u);
+  ctx.globalAlpha=.4;ctx.lineWidth=1.5*u;ctx.strokeRect(36*u,36*u,W-72*u,H-72*u);
+  ctx.restore();
+}
+function bgMM(ctx,W,H,u){
+  ctx.fillStyle='#fafcff';ctx.fillRect(0,0,W,H);
+  ctx.save();ctx.strokeStyle='rgba(140,170,205,.30)';ctx.lineWidth=1;ctx.beginPath();
+  for(let x=0;x<=W;x+=24*u){ctx.moveTo(x,0);ctx.lineTo(x,H);}
+  for(let y=0;y<=H;y+=24*u){ctx.moveTo(0,y);ctx.lineTo(W,y);}
+  ctx.stroke();
+  ctx.strokeStyle='rgba(90,130,180,.5)';ctx.lineWidth=2;ctx.beginPath();
+  for(let x=0;x<=W;x+=120*u){ctx.moveTo(x,0);ctx.lineTo(x,H);}
+  for(let y=0;y<=H;y+=120*u){ctx.moveTo(0,y);ctx.lineTo(W,y);}
+  ctx.stroke();ctx.restore();
+}
+THEMES.notebook.bg=bgNotebook;THEMES.board.bg=bgBoard;THEMES.lined.bg=bgLined;
+THEMES.kraft.bg=bgKraft;THEMES.album.bg=bgAlbum;THEMES.mm.bg=bgMM;
+
+/* ================== НАКЛЕЙКИ-РИСУНКИ ================== */
+const lw=(s)=>Math.max(2,s*0.09);
+const DOODLES={
+  star(ctx,x,y,s,c){ctx.save();ctx.translate(x,y);ctx.strokeStyle=c;ctx.lineWidth=lw(s);ctx.lineJoin='round';ctx.beginPath();
+    for(let i=0;i<10;i++){const r=i%2?s*.45:s,a=-Math.PI/2+i*Math.PI/5;ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);}
+    ctx.closePath();ctx.stroke();ctx.restore();},
+  apple(ctx,x,y,s,c){ctx.save();ctx.translate(x,y);ctx.strokeStyle=c;ctx.lineWidth=lw(s);ctx.lineCap='round';
+    ctx.beginPath();ctx.ellipse(0,s*.08,s*.4,s*.36,0,0,7);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,-s*.28);ctx.quadraticCurveTo(s*.06,-s*.42,s*.1,-s*.5);ctx.stroke();
+    ctx.beginPath();ctx.ellipse(s*.22,-s*.36,s*.14,s*.07,-.6,0,7);ctx.stroke();ctx.restore();},
+  pencil(ctx,x,y,s,c){ctx.save();ctx.translate(x,y);ctx.rotate(-.5);ctx.strokeStyle=c;ctx.lineWidth=lw(s);ctx.lineJoin='round';
+    ctx.strokeRect(-s*.16,-s*.5,s*.32,s*.85);
+    ctx.beginPath();ctx.moveTo(-s*.16,s*.35);ctx.lineTo(0,s*.58);ctx.lineTo(s*.16,s*.35);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-s*.16,-s*.3);ctx.lineTo(s*.16,-s*.3);ctx.stroke();ctx.restore();},
+  book(ctx,x,y,s,c){ctx.save();ctx.translate(x,y);ctx.strokeStyle=c;ctx.lineWidth=lw(s);ctx.lineJoin='round';
+    ctx.beginPath();ctx.moveTo(-s*.5,s*.4);ctx.lineTo(-s*.5,-s*.3);ctx.lineTo(0,-s*.5);ctx.lineTo(s*.5,-s*.3);
+    ctx.lineTo(s*.5,s*.4);ctx.lineTo(0,s*.2);ctx.closePath();ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,-s*.5);ctx.lineTo(0,s*.2);ctx.stroke();ctx.restore();},
+  flask(ctx,x,y,s,c){ctx.save();ctx.translate(x,y);ctx.strokeStyle=c;ctx.lineWidth=lw(s);ctx.lineJoin='round';
+    ctx.beginPath();ctx.moveTo(-s*.12,-s*.5);ctx.lineTo(-s*.12,-s*.15);ctx.lineTo(-s*.42,s*.45);ctx.lineTo(s*.42,s*.45);
+    ctx.lineTo(s*.12,-s*.15);ctx.lineTo(s*.12,-s*.5);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-s*.28,s*.12);ctx.lineTo(s*.28,s*.12);ctx.stroke();
+    ctx.beginPath();ctx.arc(-s*.05,s*.28,s*.06,0,7);ctx.stroke();
+    ctx.beginPath();ctx.arc(s*.14,s*.3,s*.04,0,7);ctx.stroke();ctx.restore();},
+  smile(ctx,x,y,s,c){ctx.save();ctx.translate(x,y);ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=lw(s);
+    ctx.beginPath();ctx.arc(0,0,s*.45,0,7);ctx.stroke();
+    ctx.beginPath();ctx.arc(-s*.16,-s*.12,s*.05,0,7);ctx.fill();
+    ctx.beginPath();ctx.arc(s*.16,-s*.12,s*.05,0,7);ctx.fill();
+    ctx.beginPath();ctx.arc(0,s*.05,s*.22,Math.PI*.15,Math.PI*.85);ctx.stroke();ctx.restore();},
+  heart(ctx,x,y,s,c){ctx.save();ctx.translate(x,y);ctx.strokeStyle=c;ctx.lineWidth=lw(s);ctx.beginPath();
+    ctx.moveTo(0,s*.35);ctx.bezierCurveTo(-s*.55,-s*.1,-s*.3,-s*.5,0,-s*.2);
+    ctx.bezierCurveTo(s*.3,-s*.5,s*.55,-s*.1,0,s*.35);ctx.stroke();ctx.restore();},
+  grade(ctx,x,y,s,c){ctx.save();ctx.translate(x,y);ctx.strokeStyle=c;ctx.lineWidth=lw(s);
+    ctx.beginPath();ctx.arc(0,0,s*.46,0,7);ctx.stroke();
+    ctx.fillStyle=c;ctx.font=fh(s*.5);ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('5+',0,s*.03);ctx.restore();},
+  atom(ctx,x,y,s,c){ctx.save();ctx.translate(x,y);ctx.strokeStyle=c;ctx.lineWidth=lw(s);
+    for(let i=0;i<3;i++){ctx.beginPath();ctx.ellipse(0,0,s*.5,s*.2,i*Math.PI/3,0,7);ctx.stroke();}
+    ctx.fillStyle=c;ctx.beginPath();ctx.arc(0,0,s*.06,0,7);ctx.fill();ctx.restore();},
+  ruler(ctx,x,y,s,c){ctx.save();ctx.translate(x,y);ctx.rotate(.35);ctx.strokeStyle=c;ctx.lineWidth=lw(s);
+    ctx.strokeRect(-s*.5,-s*.2,s,s*.4);
+    for(let i=1;i<8;i++){const len=i%2?s*.09:s*.15;
+      ctx.beginPath();ctx.moveTo(-s*.5+i*s/8,-s*.2);ctx.lineTo(-s*.5+i*s/8,-s*.2+len);ctx.stroke();}
+    ctx.restore();}
+};
+
+function drawStickers(ctx,W,H,u,th,hasTitle,hasFooter){
+  const slots=[[0.04,0.06],[0.96,0.06],[0.04,0.94],[0.96,0.94],[0.5,0.055],[0.5,0.945],[0.028,0.5],[0.972,0.5]];
+  const skip=new Set(); if(hasTitle)skip.add(4); if(hasFooter)skip.add(5);
+  const rng=mulberry32(hashStr(state.layout+'|'+state.theme+'|'+photos.length));
+  const types=['star','apple','pencil','book','flask','smile','heart','grade','atom','ruler'];
+  const cols=th.chalk?['#f6f2e6','#ffe3a1','#f9c5d0','#cfe8ff']:['#c94f43','#3a6ea5','#e2a33d','#4a7c59','#7a5ea8'];
+  let used=0;
+  for(const si of [0,1,2,3,6,7,4,5]){
+    if(skip.has(si))continue;
+    if(++used>6)break;
+    const sl=slots[si], size=(52+rng()*26)*u;
+    const type=types[Math.floor(rng()*types.length)];
+    const color=cols[Math.floor(rng()*cols.length)];
+    ctx.save();ctx.globalAlpha=.8;
+    DOODLES[type](ctx,sl[0]*W,sl[1]*H,size,color);
+    ctx.restore();
+  }
+}
+
+/* ================== РИСОВАНИЕ ФОТО ================== */
+function drawImageFit(ctx,img,rect,mode,rotDeg){
+  if(!img||!img.complete||!img.naturalWidth)return;
+  const iw=img.naturalWidth, ih=img.naturalHeight;
+  const swap=((rotDeg||0)%180)!==0;
+  const ar=(swap?ih:iw)/(swap?iw:ih);
+  const ra=rect.w/rect.h;
+  let dw,dh;
+  if(mode==='cover'){ if(ar>ra){dh=rect.h;dw=rect.h*ar;}else{dw=rect.w;dh=rect.w/ar;} }
+  else{ if(ar>ra){dw=rect.w;dh=rect.w/ar;}else{dh=rect.h;dw=rect.h*ar;} }
+  ctx.save();
+  if(state.enhance){ try{ctx.filter='saturate(108%) contrast(105%)';}catch(e){} }
+  ctx.translate(rect.x+rect.w/2,rect.y+rect.h/2);
+  ctx.rotate((rotDeg||0)*Math.PI/180);
+  ctx.drawImage(img,-dw/2,-dh/2,dw,dh);
+  ctx.restore();
+}
+function drawTape(ctx,x,y,ang,u){
+  ctx.save();ctx.translate(x,y);ctx.rotate(ang);ctx.globalAlpha=.62;
+  ctx.fillStyle='#ffe08a';ctx.fillRect(-38*u,-13*u,76*u,26*u);
+  ctx.globalAlpha=.8;ctx.strokeStyle='rgba(160,120,20,.3)';ctx.lineWidth=1.5*u;
+  ctx.strokeRect(-38*u,-13*u,76*u,26*u);
+  ctx.restore();
+}
+function drawPhoto(ctx,p,rect,th,u,opts){
+  opts=opts||{};
+  const mode=opts.mode||state.fit;
+  const radius=(opts.radius!==undefined)?opts.radius:state.radius*u;
+  const frame=(opts.frame!==undefined)?opts.frame:state.frame;
+  if(state.shadow&&!opts.noShadow){
+    ctx.save();ctx.shadowColor='rgba(25,35,55,.30)';ctx.shadowBlur=22*u;ctx.shadowOffsetY=10*u;
+    ctx.fillStyle='#fff';rr(ctx,rect.x,rect.y,rect.w,rect.h,Math.max(radius,2));ctx.fill();ctx.restore();
+  }
+  if(frame!=='none'){
+    ctx.fillStyle='#fffef8';rr(ctx,rect.x,rect.y,rect.w,rect.h,radius);ctx.fill();
+    ctx.strokeStyle='rgba(110,100,80,.28)';ctx.lineWidth=Math.max(1,1.5*u);ctx.stroke();
+  }
+  const inset=frame!=='none'?12*u:0;
+  const pr={x:rect.x+inset,y:rect.y+inset,w:rect.w-2*inset,h:rect.h-2*inset};
+  if(pr.w>4&&pr.h>4){
+    ctx.save();rr(ctx,pr.x,pr.y,pr.w,pr.h,Math.max(0,radius-inset));ctx.clip();
+    drawImageFit(ctx,p.img,pr,mode,p.rot);
+    ctx.restore();
+  }
+  if(frame==='tape'){
+    drawTape(ctx,rect.x+rect.w*.08,rect.y+6*u,-.55,u);
+    drawTape(ctx,rect.x+rect.w*.92,rect.y+6*u,.55,u);
+  }
+}
+function drawCirclePhoto(ctx,p,cx,cy,d,th,u){
+  if(state.shadow){
+    ctx.save();ctx.shadowColor='rgba(25,35,55,.30)';ctx.shadowBlur=20*u;ctx.shadowOffsetY=8*u;
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(cx,cy,d/2,0,7);ctx.fill();ctx.restore();
+  }
+  ctx.save();ctx.beginPath();ctx.arc(cx,cy,d/2,0,7);ctx.clip();
+  drawImageFit(ctx,p.img,{x:cx-d/2,y:cy-d/2,w:d,h:d},state.fit,p.rot);
+  ctx.restore();
+  ctx.beginPath();ctx.arc(cx,cy,d/2-3*u,0,7);
+  ctx.strokeStyle=th.accent;ctx.lineWidth=5*u;ctx.stroke();
+}
+function drawCaption(ctx,text,cx,yCenter,maxW,th,u){
+  if(!text||!text.trim())return;
+  ctx.save();ctx.font=fh(30*u);ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle=th.cap;
+  ctx.fillText(ellipsize(ctx,text.trim(),maxW),cx,yCenter);
+  ctx.restore();
+}
+
+/* ================== РАСКЛАДКИ ================== */
+function bestGrid(n){
+  let best=null;
+  for(let cols=1;cols<=n;cols++){
+    const rows=Math.ceil(n/cols), empt=cols*rows-n;
+    let score=empt*100+Math.abs(cols-rows)*2+cols;
+    if(cols<rows)score+=3;
+    if(cols>4||rows>4)score+=200;
+    if(!best||score<best.score)best={cols:cols,rows:rows,score:score};
+  }
+  return best;
+}
+function squiggle(ctx,x,y,w,color,u){
+  ctx.save();ctx.strokeStyle=color;ctx.lineWidth=4*u;ctx.lineCap='round';ctx.beginPath();
+  const seg=26*u,amp=4.5*u;
+  for(let px=0;px<=w;px+=6*u){
+    const py=Math.sin(px/seg*Math.PI*2)*amp;
+    if(px===0)ctx.moveTo(x+px,y+py);else ctx.lineTo(x+px,y+py);
+  }
+  ctx.stroke();ctx.restore();
+}
+
+function layoutGrid(ctx,gr,th,u,anyCap){
+  const n=photos.length,{cols,rows}=bestGrid(n);
+  const g=state.gap*u, capH=anyCap?40*u:0;
+  const cw=(gr.w-(cols-1)*g)/cols, ch=(gr.h-(rows-1)*g)/rows;
+  const rem=n%cols;
+  photos.forEach((p,i)=>{
+    const r=i%cols, cRow=Math.floor(i/cols);
+    const x=gr.x+r*(cw+g), y=gr.y+cRow*(ch+g);
+    let w=cw;
+    if(rem!==0&&i===n-1)w=cw*(cols-rem+1)+g*(cols-rem);
+    drawPhoto(ctx,p,{x:x,y:y,w:w,h:ch-capH},th,u);
+    if(capH)drawCaption(ctx,p.caption,x+w/2,y+ch-capH/2,w-10*u,th,u);
+  });
+}
+function layoutPolaroid(ctx,gr,th,u){
+  const n=photos.length,{cols,rows}=bestGrid(n);
+  const rng=mulberry32(hashStr('pol'+n+state.tilt+state.theme));
+  const g=state.gap*u, pad=12*u;
+  const cw=(gr.w-(cols-1)*g)/cols, ch=(gr.h-(rows-1)*g)/rows;
+  const capStrip=state.captions?62*u:18*u;
+  photos.forEach((p,i)=>{
+    const r=i%cols, cRow=Math.floor(i/cols);
+    const cx=gr.x+r*(cw+g)+cw/2, cy=gr.y+cRow*(ch+g)+ch/2;
+    const cardW=cw-2*pad, cardH=ch-2*pad;
+    const tilt=state.tilt?(rng()*2-1)*2:0;
+    ctx.save();ctx.translate(cx,cy);if(tilt)ctx.rotate(tilt*Math.PI/180);
+    if(state.shadow){
+      ctx.save();ctx.shadowColor='rgba(25,35,55,.32)';ctx.shadowBlur=20*u;ctx.shadowOffsetY=9*u;
+      ctx.fillStyle='#fffef8';rr(ctx,-cardW/2,-cardH/2,cardW,cardH,8*u);ctx.fill();ctx.restore();
+    }
+    ctx.fillStyle='#fffef8';rr(ctx,-cardW/2,-cardH/2,cardW,cardH,8*u);ctx.fill();
+    ctx.strokeStyle='rgba(110,100,80,.25)';ctx.lineWidth=Math.max(1,1.5*u);ctx.stroke();
+    const pr={x:-cardW/2+14*u,y:-cardH/2+14*u,w:cardW-28*u,h:cardH-28*u-capStrip};
+    if(pr.w>4&&pr.h>4){
+      ctx.save();rr(ctx,pr.x,pr.y,pr.w,pr.h,4*u);ctx.clip();
+      drawImageFit(ctx,p.img,pr,state.fit,p.rot);ctx.restore();
+    }
+    if(state.captions&&p.caption&&p.caption.trim()){
+      ctx.font=fh(30*u);ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle='#3a3a3a';
+      ctx.fillText(ellipsize(ctx,p.caption.trim(),cardW-28*u),0,cardH/2-14*u-capStrip/2);
+    }
+    if(state.frame==='tape'){
+      drawTape(ctx,-cardW/2+cardW*.18,-cardH/2+2*u,-.5,u);
+      drawTape(ctx,cardW/2-cardW*.18,-cardH/2+2*u,.5,u);
+    }
+    ctx.restore();
+  });
+}
+function layoutMosaic(ctx,gr,th,u,anyCap){
+  const n=photos.length;
+  const g=state.gap*u, capH=anyCap?40*u:0;
+  if(n===1){
+    drawPhoto(ctx,photos[0],{x:gr.x,y:gr.y,w:gr.w,h:gr.h-capH},th,u);
+    if(capH)drawCaption(ctx,photos[0].caption,gr.x+gr.w/2,gr.y+gr.h-capH/2,gr.w-20*u,th,u);
+    return;
+  }
+  const bigW=gr.w*.56-g/2;
+  const rightX=gr.x+bigW+g, rightW=gr.w-bigW-g;
+  drawPhoto(ctx,photos[0],{x:gr.x,y:gr.y,w:bigW,h:gr.h-capH},th,u);
+  if(capH)drawCaption(ctx,photos[0].caption,gr.x+bigW/2,gr.y+gr.h-capH/2,bigW-10*u,th,u);
+  const rest=n-1, cols2=2, rows2=Math.ceil(rest/2);
+  const cw2=(rightW-g)/2, ch2=(gr.h-(rows2-1)*g)/rows2;
+  for(let k=0;k<rest;k++){
+    const p=photos[k+1];
+    const r=k%cols2, cRow=Math.floor(k/cols2);
+    const x=rightX+r*(cw2+g), y=gr.y+cRow*(ch2+g);
+    let w=cw2;
+    if(rest%2===1&&k===rest-1)w=cw2*2+g;
+    drawPhoto(ctx,p,{x:x,y:y,w:w,h:ch2-capH},th,u);
+    if(capH)drawCaption(ctx,p.caption,x+w/2,y+ch2-capH/2,w-10*u,th,u);
+  }
+}
+function layoutCircles(ctx,gr,th,u,anyCap){
+  const n=photos.length,{cols,rows}=bestGrid(n);
+  const g=state.gap*u, capH=anyCap?42*u:0;
+  const cw=(gr.w-(cols-1)*g)/cols, ch=(gr.h-(rows-1)*g)/rows;
+  photos.forEach((p,i)=>{
+    const r=i%cols, cRow=Math.floor(i/cols);
+    const x=gr.x+r*(cw+g), y=gr.y+cRow*(ch+g);
+    const d=Math.min(cw,ch-capH);
+    drawCirclePhoto(ctx,p,x+cw/2,y+d/2,d,th,u);
+    if(capH)drawCaption(ctx,p.caption,x+cw/2,y+d+capH/2,cw-10*u,th,u);
+  });
+}
+
+/* ================== ГЛАВНЫЙ РЕНДЕР ================== */
+function renderCollage(ctx,W,H){
+  const th=THEMES[state.theme]||THEMES.notebook;
+  const u=W/1600;
+  const P=(70+(th.framePad||0))*u;
+  th.bg(ctx,W,H,u);
+
+  const hasTitle=!!state.title.trim(), hasSub=!!state.subtitle.trim(), hasFooter=!!state.footer.trim();
+  if(state.stickers)drawStickers(ctx,W,H,u,th,hasTitle,hasFooter);
+
+  let top=P;
+  if(hasTitle){
+    let f=76*u;ctx.font=fh(f);
+    let t=state.title.trim();
+    const maxTW=W-2*P-30*u;
+    while(f>30*u&&ctx.measureText(t).width>maxTW){f-=2;ctx.font=fh(f);}
+    if(ctx.measureText(t).width>maxTW)t=ellipsize(ctx,t,maxTW);
+    ctx.save();ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.fillStyle=th.title;
+    if(th.chalk){ctx.shadowColor='rgba(255,255,255,.4)';ctx.shadowBlur=6*u;}
+    ctx.fillText(t,W/2,top+f);
+    ctx.restore();
+    const tw=Math.min(ctx.measureText(t).width,maxTW);
+    squiggle(ctx,W/2-tw/2,top+f+12*u,tw,th.accent,u);
+    top+=f*1.15+16*u;
+  }
+  if(hasSub){
+    ctx.save();ctx.font=fh(36*u);ctx.textAlign='center';ctx.textBaseline='alphabetic';
+    ctx.fillStyle=th.cap;ctx.fillText(state.subtitle.trim(),W/2,top+30*u);ctx.restore();
+    top+=64*u;
+  }
+  if(hasTitle||hasSub)top+=8*u;
+
+  const bottom=H-P-(hasFooter?48*u:0);
+  const gr={x:P,y:top,w:W-2*P,h:Math.max(60*u,bottom-top)};
+  const anyCap=state.captions&&photos.some(p=>p.caption&&p.caption.trim());
+
+  if(photos.length===0){
+    ctx.save();ctx.setLineDash([14*u,10*u]);ctx.strokeStyle=th.accent;ctx.lineWidth=3*u;
+    rr(ctx,gr.x+16*u,gr.y+16*u,gr.w-32*u,gr.h-32*u,18*u);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle=th.cap;ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.font=fh(42*u);ctx.fillText('Здесь появится ваш коллаж',W/2,gr.y+gr.h/2-34*u);
+    ctx.font=fh(28*u);ctx.globalAlpha=.75;
+    ctx.fillText('Добавьте от 1 до 9 фотографий ✏️',W/2,gr.y+gr.h/2+18*u);
+    ctx.restore();
+  }else{
+    if(state.layout==='grid')layoutGrid(ctx,gr,th,u,anyCap);
+    else if(state.layout==='polaroid')layoutPolaroid(ctx,gr,th,u);
+    else if(state.layout==='mosaic')layoutMosaic(ctx,gr,th,u,anyCap);
+    else if(state.layout==='circles')layoutCircles(ctx,gr,th,u,anyCap);
+    else layoutGrid(ctx,gr,th,u,anyCap);
+  }
+
+  if(hasFooter){
+    ctx.save();ctx.font=fh(28*u);ctx.fillStyle=th.cap;ctx.globalAlpha=.9;
+    ctx.textAlign='center';ctx.textBaseline='alphabetic';
+    ctx.fillText(ellipsize(ctx,state.footer.trim(),W-2*P),W/2,H-P-12*u);
+    ctx.restore();
+  }
+}
+
+/* ================== ПРЕДПРОСМОТР ================== */
+const cv=byId('cv');
+const PMULT=0.6;
+let raf=0;
+function scheduleRender(){
+  if(raf)return;
+  raf=requestAnimationFrame(()=>{raf=0;renderPreview();});
+}
+function renderPreview(){
+  const F=FORMATS[state.format];
+  cv.width=Math.round(F.w*PMULT);cv.height=Math.round(F.h*PMULT);
+  const ctx=cv.getContext('2d');
+  ctx.scale(PMULT,PMULT);
+  renderCollage(ctx,F.w,F.h);
+  updateButtons();
+}
+function buildCanvas(mult){
+  const F=FORMATS[state.format];
+  const c=document.createElement('canvas');
+  c.width=Math.round(F.w*mult);c.height=Math.round(F.h*mult);
+  const ctx=c.getContext('2d');
+  ctx.scale(c.width/F.w,c.height/F.h);
+  renderCollage(ctx,F.w,F.h);
+  return c;
+}
+
+/* ================== ФОТО: ДОБАВЛЕНИЕ ================== */
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function addPhotos(files){
+  const list=[...files].filter(f=>f.type&&f.type.indexOf('image/')===0);
+  if(!list.length){toast('Это не похоже на изображения 🤔');return;}
+  const room=9-photos.length;
+  if(room<=0){toast('Максимум 9 фотографий');return;}
+  const take=list.slice(0,room);
+  if(list.length>room)toast('Добавлено '+take.length+' из '+list.length+' — максимум 9 фотографий');
+  let pending=take.length;
+  const finish=()=>{
+    if(--pending===0){renderThumbs();updateCounter();scheduleRender();}
+  };
+  const entries=take.map(f=>({id:++uid,img:null,url:URL.createObjectURL(f),caption:'',rot:0}));
+  photos.push(...entries);
+  entries.forEach(en=>{
+    const im=new Image();
+    im.onload=()=>{en.img=im;finish();};
+    im.onerror=()=>{URL.revokeObjectURL(en.url);const i=photos.indexOf(en);if(i>-1)photos.splice(i,1);finish();};
+    im.src=en.url;
+  });
+}
+function renderThumbs(){
+  const box=byId('thumbs');box.innerHTML='';
+  photos.forEach((p,i)=>{
+    const d=document.createElement('div');d.className='thumb';
+    d.innerHTML=
+      '<img src="'+p.url+'" alt="фото '+(i+1)+'">'+
+      '<div class="tbar">'+
+        '<button data-act="left" data-i="'+i+'" title="Передвинуть раньше">←</button>'+
+        '<button data-act="rot" data-i="'+i+'" title="Повернуть на 90°">↻</button>'+
+        '<button data-act="right" data-i="'+i+'" title="Передвинуть позже">→</button>'+
+        '<button class="del" data-act="del" data-i="'+i+'" title="Удалить">✕</button>'+
+      '</div>'+
+      '<input class="cap" value="'+esc(p.caption)+'" placeholder="Подпись к фото…" data-i="'+i+'">';
+    box.appendChild(d);
+  });
+}
+function updateCounter(){
+  byId('counter').textContent=photos.length+' из 9 фото';
+}
+function updateButtons(){
+  const empty=photos.length===0;
+  byId('btnDownload').disabled=empty;
+  byId('btnFullsize').disabled=empty;
+}
+
+/* ================== ЭКСПОРТ ================== */
+function today(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function download(){
+  if(!photos.length)return;
+  const isJpg=state.exportFormat==='jpg';
+  const c=buildCanvas(state.exportScale);
+  c.toBlob(function(b){
+    if(!b){showFullsize();return;}
+    const url=URL.createObjectURL(b);
+    const a=document.createElement('a');
+    a.href=url;a.download='shkolnyy-kollazh-'+today()+(isJpg?'.jpg':'.png');
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    toast('Коллаж готов! 🎉 Если файл не скачался — нажмите «В полном размере» и сохраните картинку оттуда.');
+  },isJpg?'image/jpeg':'image/png',0.92);
+}
+function showFullsize(){
+  if(!photos.length)return;
+  const c=buildCanvas(state.exportScale);
+  const isJpg=state.exportFormat==='jpg';
+  byId('overlayImg').src=c.toDataURL(isJpg?'image/jpeg':'image/png',0.92);
+  byId('overlay').classList.add('open');
+}
+
+/* ================== ПРИВЯЗКИ ================== */
+function bindGroup(name,key,transform){
+  const inputs=[...document.querySelectorAll('input[name="'+name+'"]')];
+  const sync=()=>inputs.forEach(i=>i.closest('label').classList.toggle('on',i.checked));
+  inputs.forEach(i=>{
+    i.checked=String(state[key])===i.value;
+    i.addEventListener('change',()=>{
+      if(!i.checked)return;
+      state[key]=transform?transform(i.value):i.value;
+      sync();save();scheduleRender();
+    });
+  });
+  sync();
+}
+function bindToggle(id,key){
+  const el=byId(id),lab=el.closest('label');
+  const sync=()=>lab.classList.toggle('on',el.checked);
+  el.checked=!!state[key];sync();
+  el.addEventListener('change',()=>{state[key]=el.checked;sync();save();scheduleRender();});
+}
+function bindRange(id,key,outId){
+  const el=byId(id),out=byId(outId);
+  el.value=state[key];
+  const show=()=>out.textContent=el.value+' px';
+  show();
+  el.addEventListener('input',()=>{state[key]=+el.value;show();save();scheduleRender();});
+}
+function bindText(id,key){
+  const el=byId(id);
+  el.value=state[key];
+  el.addEventListener('input',()=>{state[key]=el.value;save();scheduleRender();});
+}
+
+bindGroup('layout','layout');
+bindGroup('format','format');
+bindGroup('theme','theme');
+bindGroup('fit','fit');
+bindGroup('frame','frame');
+bindGroup('exportScale','exportScale',v=>parseFloat(v));
+bindGroup('exportFormat','exportFormat');
+bindToggle('tglShadow','shadow');
+bindToggle('tglCaptions','captions');
+bindToggle('tglTilt','tilt');
+bindToggle('tglStickers','stickers');
+bindToggle('tglEnhance','enhance');
+bindRange('gapRange','gap','gapOut');
+bindRange('radiusRange','radius','radiusOut');
+bindText('inpTitle','title');
+bindText('inpSubtitle','subtitle');
+bindText('inpFooter','footer');
+
+const dropzone=byId('dropzone'),fileInput=byId('fileInput');
+dropzone.addEventListener('click',()=>fileInput.click());
+dropzone.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fileInput.click();}});
+fileInput.addEventListener('change',()=>{addPhotos(fileInput.files);fileInput.value='';});
+['dragenter','dragover'].forEach(ev=>dropzone.addEventListener(ev,e=>{e.preventDefault();dropzone.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>dropzone.addEventListener(ev,e=>{e.preventDefault();dropzone.classList.remove('over');}));
+dropzone.addEventListener('drop',e=>{if(e.dataTransfer&&e.dataTransfer.files.length)addPhotos(e.dataTransfer.files);});
+window.addEventListener('dragover',e=>e.preventDefault());
+window.addEventListener('drop',e=>e.preventDefault());
+window.addEventListener('paste',e=>{
+  const items=(e.clipboardData&&e.clipboardData.items)||[];
+  const fs=[...items].filter(it=>it.kind==='file'&&it.type.indexOf('image/')===0).map(it=>it.getAsFile()).filter(Boolean);
+  if(fs.length)addPhotos(fs);
+});
+
+byId('thumbs').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-act]');
+  if(!b)return;
+  const i=+b.dataset.i,act=b.dataset.act;
+  if(act==='left'&&i>0){const t=photos[i-1];photos[i-1]=photos[i];photos[i]=t;}
+  if(act==='right'&&i<photos.length-1){const t=photos[i+1];photos[i+1]=photos[i];photos[i]=t;}
+  if(act==='rot')photos[i].rot=((photos[i].rot||0)+90)%360;
+  if(act==='del'){URL.revokeObjectURL(photos[i].url);photos.splice(i,1);}
+  renderThumbs();updateCounter();scheduleRender();
+});
+byId('thumbs').addEventListener('input',e=>{
+  if(e.target.classList.contains('cap')){
+    photos[+e.target.dataset.i].caption=e.target.value;
+    scheduleRender();
+  }
+});
+byId('shuffleBtn').addEventListener('click',()=>{
+  if(photos.length<2)return;
+  for(let i=photos.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const t=photos[i];photos[i]=photos[j];photos[j]=t;}
+  renderThumbs();scheduleRender();toast('Фотографии перемешаны 🎲');
+});
+byId('btnClear').addEventListener('click',()=>{
+  if(!photos.length)return;
+  if(!confirm('Удалить все фотографии?'))return;
+  photos.forEach(p=>URL.revokeObjectURL(p.url));
+  photos.length=0;
+  renderThumbs();updateCounter();scheduleRender();
+});
+byId('btnDownload').addEventListener('click',download);
+byId('btnFullsize').addEventListener('click',showFullsize);
+byId('overlayClose').addEventListener('click',()=>byId('overlay').classList.remove('open'));
+byId('overlay').addEventListener('click',e=>{if(e.target===byId('overlay'))byId('overlay').classList.remove('open');});
+
+/* старт */
+renderThumbs();updateCounter();renderPreview();
+</script>
+</body>
+</html>
